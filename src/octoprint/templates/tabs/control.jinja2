@@ -1,5 +1,5 @@
 {% if webcamStream %}
-    <div id="webcam_container" tabindex="0" data-bind="event: { keydown: onKeyDown, mouseover: onMouseOver, mouseout: onMouseOut, focus: onFocus }">
+    <div id="webcam_container" tabindex="0" data-bind="visible: loginState.isUser, event: { keydown: onKeyDown, mouseover: onMouseOver, mouseout: onMouseOut, focus: onFocus }">
         <div id="webcam_rotator" data-bind="css: { rotate90: settings.webcam_rotate90() }">
             <img id="webcam_image" data-bind="css: { flipH: settings.webcam_flipH(), flipV: settings.webcam_flipV() }">
         </div>

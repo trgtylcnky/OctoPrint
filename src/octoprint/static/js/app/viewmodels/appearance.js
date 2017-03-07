@@ -8,16 +8,16 @@ $(function() {
 
         self.brand = ko.pureComputed(function() {
             if (self.name())
-                return gettext("OctoPrint") + ": " + self.name();
+                return gettext("ArtıBoyut") + ": " + self.name();
             else
-                return gettext("OctoPrint");
+                return gettext("ArtıBoyut");
         });
 
         self.title = ko.pureComputed(function() {
             if (self.name())
-                return self.name() + " [" + gettext("OctoPrint") + "]";
+                return self.name() + " [" + gettext("ArtıBoyut") + "]";
             else
-                return gettext("OctoPrint");
+                return gettext("ArtıBoyut");
         });
     }
 

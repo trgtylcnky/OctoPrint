@@ -181,6 +181,16 @@ $(function() {
                 throw OctoPrint.InvalidArgumentError("user must be set");
             }
 
+            if (user.name == "admin") {
+                // we do not allow to delete ourselves
+                new PNotify({
+                    title: gettext("Not possible"),
+                    text: gettext("You may not delete admin account."),
+                    type: "error"
+                });
+                return $.Deferred().reject("You may not delete admin account.").promise();
+            }
+
             if (user.name == self.loginState.username()) {
                 // we do not allow to delete ourselves
                 new PNotify({

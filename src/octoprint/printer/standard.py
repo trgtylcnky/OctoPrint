@@ -305,6 +305,10 @@ class Printer(PrinterInterface, comm.MachineComPrintCallback):
 		if not isinstance(amount, (int, long, float)):
 			raise ValueError("amount must be a valid number: {amount}".format(amount=amount))
 
+
+		if _temp[_temp.keys()[0]][0] < 170:
+			return
+			
 		printer_profile = self._printerProfileManager.get_current_or_default()
 		extrusion_speed = printer_profile["axes"]["e"]["speed"]
 		self.commands(["G91", "G1 E%s F%d" % (amount, extrusion_speed), "G90"])

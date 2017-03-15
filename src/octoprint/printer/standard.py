@@ -307,11 +307,11 @@ class Printer(PrinterInterface, comm.MachineComPrintCallback):
 
 
 		if _temp[_temp.keys()[0]][0] < 170:
-			return
-			
-		printer_profile = self._printerProfileManager.get_current_or_default()
-		extrusion_speed = printer_profile["axes"]["e"]["speed"]
-		self.commands(["G91", "G1 E%s F%d" % (amount, extrusion_speed), "G90"])
+			self.commands(["M117 "+str(_temp[_temp.keys()[0]][0])])
+		else:
+			printer_profile = self._printerProfileManager.get_current_or_default()
+			extrusion_speed = printer_profile["axes"]["e"]["speed"]
+			self.commands(["G91", "G1 E%s F%d" % (amount, extrusion_speed), "G90"])
 
 	def change_tool(self, tool):
 		if not PrinterInterface.valid_tool_regex.match(tool):

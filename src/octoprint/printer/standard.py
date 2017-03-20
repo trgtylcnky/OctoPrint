@@ -305,9 +305,13 @@ class Printer(PrinterInterface, comm.MachineComPrintCallback):
 		if not isinstance(amount, (int, long, float)):
 			raise ValueError("amount must be a valid number: {amount}".format(amount=amount))
 
-		printer_profile = self._printerProfileManager.get_current_or_default()
-		extrusion_speed = printer_profile["axes"]["e"]["speed"]
-		self.commands(["G91", "G1 E%s F%d" % (amount, extrusion_speed), "G90"])
+
+		if self._temp[self._temp.keys()[0]][0] < 170:
+			self.commands(["M117 "+str(self._temp[self._temp.keys()[0]][0])])
+		else:
+			printer_profile = self._printerProfileManager.get_current_or_default()
+			extrusion_speed = printer_profile["axes"]["e"]["speed"]
+			self.commands(["G91", "G1 E%s F%d" % (amount, extrusion_speed), "G90"])
 
 	def change_tool(self, tool):
 		if not PrinterInterface.valid_tool_regex.match(tool):

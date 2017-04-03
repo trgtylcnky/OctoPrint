@@ -119,6 +119,17 @@ $(function() {
         self.showChangePasswordDialog = function(user) {
             if (!CONFIG_ACCESS_CONTROL) return;
 
+            if (user.name == "admin" &&  user.name != self.loginState.username()) {
+                // we do not allow to change admin password
+                new PNotify({
+                    title: gettext("Not possible"),
+                    text: gettext("You may not change admin password."),
+                    type: "error"
+                });
+                return $.Deferred().reject("You may not change admin password.").promise();
+            }
+
+
             self.currentUser(user);
             self.changePasswordDialog.modal("show");
         };
@@ -182,7 +193,7 @@ $(function() {
             }
 
             if (user.name == "admin") {
-                // we do not allow to delete ourselves
+                // we do not allow to delete admin account
                 new PNotify({
                     title: gettext("Not possible"),
                     text: gettext("You may not delete admin account."),

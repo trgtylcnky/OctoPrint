@@ -8,6 +8,13 @@ $(function() {
 
         self.brand = ko.pureComputed(function() {
             if (self.name())
+                return self.name();
+            else
+                return gettext("ArtıBoyut");
+        });
+
+        self.fullbrand = ko.pureComputed(function() {
+            if (self.name())
                 return gettext("ArtıBoyut") + ": " + self.name();
             else
                 return gettext("ArtıBoyut");

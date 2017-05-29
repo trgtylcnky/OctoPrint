@@ -71,7 +71,7 @@
 </div>
 <!-- Extrusion control panel -->
 <div id="control-jog-extrusion" class="jog-panel" style="display: none;" data-bind="visible: loginState.isUser">
-    <h1>Tool (E)</h1>
+    <h1>{{ _('Tool (E)') }}</h1>
     <div>
         <div class="btn-group control-box">
             <button class="btn dropdown-toggle" data-toggle="dropdown" data-bind="enable: isOperational() && !isPrinting() && !isPaused() && loginState.isUser()">

@@ -1,10 +1,6 @@
 {% if webcamStream %}
-<<<<<<< HEAD
+
     <div id="webcam_container" tabindex="0" data-bind="visible: loginState.isUser, event: { keydown: onKeyDown, mouseover: onMouseOver, mouseout: onMouseOut, focus: onFocus }">
-        <div id="webcam_rotator" data-bind="css: { rotate90: settings.webcam_rotate90() }">
-            <img id="webcam_image" data-bind="css: { flipH: settings.webcam_flipH(), flipV: settings.webcam_flipV() }">
-=======
-    <div id="webcam_container" tabindex="0" data-bind="event: { keydown: onKeyDown, mouseover: onMouseOver, mouseout: onMouseOut, focus: onFocus }">
         <div class="nowebcam" data-bind="visible: !webcamLoaded()">
             <div class="text webcam_loading" data-bind="visible: !webcamLoaded() && !webcamError()">
                 <p><strong>{{ _('Webcam stream loading...') }}</strong></p>
@@ -20,7 +16,7 @@
                     <img id="webcam_image" data-bind="css: { flipH: settings.webcam_flipH(), flipV: settings.webcam_flipV() }, event: { load: onWebcamLoaded, error: onWebcamErrored }, visible: !webcamError()">
                 </div>
             </div>
->>>>>>> fe481e12b3c50a2def3b41515200e13a8c6a5c72
+
         </div>
         <div class="keycontrol_overlay" data-bind="visible: showKeycontrols">
             <div class="keycontrol_overlay_heading">{{ _("Keyboard controls active") }} <a href="#" data-bind="click: toggleKeycontrolHelp"><i data-bind="css: { 'icon-chevron-down': !keycontrolHelpActive(), 'icon-chevron-up': keycontrolHelpActive() }"></i></a></div>

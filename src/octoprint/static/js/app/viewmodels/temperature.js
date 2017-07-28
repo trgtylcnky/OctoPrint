@@ -60,7 +60,7 @@ $(function() {
                     if (tools.length <= extruder || !tools[extruder]) {
                         tools[extruder] = self._createToolEntry();
                     }
-                    tools[extruder]["name"](gettext("Tool") + " " + extruder);
+                    tools[extruder]["name"](gettext("Tool") + " " + (extruder + 1));
                     tools[extruder]["key"]("tool" + extruder);
                 }
             } else if (numExtruders == 1 || sharedNozzle) {

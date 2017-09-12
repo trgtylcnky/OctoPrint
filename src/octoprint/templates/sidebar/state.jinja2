@@ -1,4 +1,5 @@
 <span title="{{ _('Current printer state') }}">{{ _('State') }}</span>: <strong data-bind="text: stateString"></strong><br>
+<div id="filament-state"></div>
 <hr>
 <span title="{{ _('Name of file currently selected for printing') }}">{{ _('File') }}</span>: <strong data-bind="text: filename, attr: {title: filepath}"></strong>&nbsp;<strong data-bind="visible: sd">(SD)</strong><br>
 <span title="{{ _('Current timelapse configuration') }}">{{ _('Timelapse') }}</span>: <strong data-bind="text: timelapseString"></strong><br>

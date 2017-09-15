@@ -33,7 +33,7 @@
                     <ul class="dropdown-menu">
                         <!-- ko foreach: $root.temperature_profiles -->
                         <li>
-                            <a href="#" data-bind="click: function() {$root.setTargetFromProfile($parent, $data);}, text: 'Set ' + name + ' (' + ($parent.key() == 'bed' ? bed : extruder) + '&deg;C)'"></a>
+                            <a href="#" data-bind="click: function() {$root.setTargetFromProfile($parent, $data);}, text: name + ' (' + ($parent.key() == 'bed' ? bed : extruder) + '&deg;C)'"></a>
                         </li>
                         <!-- /ko -->
                         <li class="divider"></li>

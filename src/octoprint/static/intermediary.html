@@ -221,12 +221,12 @@
                         // our online.gif loaded, so the server is up, let's wait for it to become ready
                         serverIsOnline = true;
 
-                        message.innerText = "OctoPrint server started, waiting for it to get ready...";
+                        message.innerText = "Sunucu başlatıldı, hazır hale gelmesi bekleniyor...";
                         reloadnowlink.onclick = function() {
                             indexCached = true; // not really, but we fake it
 
                             message.className = "pulsate1";
-                            message.innerText = "Reloading page...";
+                            message.innerText = "Yeniden yükleniyor...";
                             reloadnow.style.display = "none";
 
                             reload();
@@ -292,7 +292,7 @@
 
                             <h1 id="message" class="pulsate3">Bekleyin...</h1>
 
-                            <small id="reloadnow" style="display: none"><a id="reloadnowlink" class="normal" href="javascript:void(0)">Don't wait, reload now!</a></small>
+                            <small id="reloadnow" style="display: none"><a id="reloadnowlink" class="normal" href="javascript:void(0)">Beklemeden yeniden yükle!</a></small>
                         </div>
                     </div>
                 </div>

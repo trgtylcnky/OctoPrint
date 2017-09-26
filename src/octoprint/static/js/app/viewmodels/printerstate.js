@@ -229,7 +229,7 @@ $(function() {
                     if (!_.startsWith(key, "tool") || !data.filament[key] || !data.filament[key].hasOwnProperty("length") || data.filament[key].length <= 0) continue;
 
                     result.push({
-                        name: ko.observable(gettext("Tool") + " " + key.substr("tool".length)),
+                        name: ko.observable(gettext("E") + (parseInt(key.substr("tool".length)) + 1)),
                         data: ko.observable(data.filament[key])
                     });
                 }

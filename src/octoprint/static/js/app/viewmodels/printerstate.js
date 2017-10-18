@@ -152,15 +152,15 @@ $(function() {
             var timelapse = self.timelapse();
 
             if (!timelapse || !timelapse.hasOwnProperty("type"))
-                return "-";
+                return "";
 
             var type = timelapse["type"];
             if (type == "zchange") {
-                return gettext("On Z Change");
+                return gettext("Timelapse") + ": " + gettext("On Z Change");
             } else if (type == "timed") {
-                return gettext("Timed") + " (" + timelapse["options"]["interval"] + " " + gettext("sec") + ")";
+                return gettext("Timelapse") + ": " + gettext("Timed") + " (" + timelapse["options"]["interval"] + " " + gettext("sec") + ")";
             } else {
-                return "-";
+                return "";
             }
         });
 

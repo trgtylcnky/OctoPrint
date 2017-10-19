@@ -234,7 +234,7 @@ $(function() {
                     });
                 }
             }
-            self.filament(result);
+            self.filament(result.reverse());
         };
 
         self._processProgressData = function(data) {

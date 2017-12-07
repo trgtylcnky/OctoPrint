@@ -8,6 +8,8 @@
         <link rel="apple-touch-icon" sizes="114x114" href="{{ url_for('static', filename='img/apple-touch-icon-114x114.png') }}">
         <link rel="apple-touch-icon" sizes="144x144" href="{{ url_for('static', filename='img/apple-touch-icon-144x144.png') }}">
 
+        <meta name="robots" content="noindex, nofollow, noimageindex">
+
         {% include 'stylesheets.jinja2' %}
         {% include 'initscript.jinja2' %}
     </head>
@@ -58,7 +60,7 @@
                                     >
                                 <div class="accordion-heading">
                                     <a class="accordion-toggle" data-toggle="collapse" data-target="#{{ data._div }}">
-                                        {% if "icon" in data %}<i class="icon-{{ data.icon }}"></i> {% endif %}{{ entry|e }}
+                                        {% if "icon" in data %}<i class="fa icon-black fa-{{ data.icon }}"></i> {% endif %}{{ entry|e }}
                                     </a>
                                     {% if "template_header" in data %}
                                         {% try "There was an error with the template {filename} at line number {lineno}: {exception}" %}{% include data.template_header ignore missing %}{% endtry %}
@@ -96,7 +98,7 @@
                             {% endfor %}
                         </ul>
 
-                        <div class="tab-content">
+                        <div id="tabs_content" class="tab-content">
                             {% for key in templates.tab.order %}
                                 {% set entry, data = templates.tab.entries[key] %}
                                 {% if "custom_bindings" not in data or data["custom_bindings"] %}<!-- ko allowBindings: false -->{% endif %}
@@ -132,8 +134,6 @@
                         <li><a href="https://www.artiboyut.com/index.php/tr/kurumsal/iletisim" target="_blank" rel="noreferrer noopener"><i class="icon-question-sign"></i> {{ _('FAQ') }}</a></li>
                         <!--
                         <li><a href="https://github.com/trgtylcnky/OctoPrint/" target="_blank" rel="noreferrer noopener"><i class="icon-github"></i> {{ _('Sourcecode') }}</a></li>
-                        
-                        
                         <li><a href="http://docs.octoprint.org" target="_blank" rel="noreferrer noopener"><i class="icon-book"></i> {{ _('Documentation') }}</a></li>
                         <li><a href="https://github.com/foosel/OctoPrint/issues" target="_blank" rel="noreferrer noopener"><i class="icon-flag"></i> {{ _('Bugs and Requests') }}</a></li>
                         <li><a href="https://github.com/foosel/OctoPrint/wiki/FAQ" target="_blank" rel="noreferrer noopener"><i class="icon-question-sign"></i> {{ _('FAQ') }}</a></li>
@@ -150,6 +150,7 @@
             {% include 'dialogs/wizard.jinja2' %}
             {% include 'dialogs/about.jinja2' %}
             {% include 'dialogs/files.jinja2' %}
+            {% include 'dialogs/temperature.jinja2' %}
             <!-- End of dialogs -->
 
             <!-- Overlays -->

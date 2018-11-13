@@ -46,6 +46,7 @@ $(function() {
         self.renderer_zoomOnModel = ko.observable(false);
         self.renderer_showMoves = ko.observable(true);
         self.renderer_showRetracts = ko.observable(true);
+        self.renderer_showPrinthead = ko.observable(true);
         self.renderer_showBoundingBox = ko.observable(false);
         self.renderer_showFullSize = ko.observable(false);
         self.renderer_extrusionWidthEnabled = ko.observable(false);
@@ -56,10 +57,16 @@ $(function() {
 
         self.reader_sortLayers = ko.observable(true);
         self.reader_hideEmptyLayers = ko.observable(true);
+        self.reader_ignoreOutsideBed = ko.observable(true);
 
         self.layerSelectionEnabled = ko.observable(false);
         self.layerUpEnabled = ko.observable(false);
         self.layerDownEnabled = ko.observable(false);
+
+        self.synchronizeOptionsAndReload = function(additionalRendererOptions, additionalReaderOptions) {
+            self.synchronizeOptions(additionalRendererOptions, additionalReaderOptions);
+            self.reload();
+        };
 
         self.synchronizeOptions = function(additionalRendererOptions, additionalReaderOptions) {
             var renderer = {
@@ -67,6 +74,7 @@ $(function() {
                 centerViewport: self.renderer_centerViewport(),
                 showMoves: self.renderer_showMoves(),
                 showRetracts: self.renderer_showRetracts(),
+                showHead: self.renderer_showPrinthead(),
                 showBoundingBox: self.renderer_showBoundingBox(),
                 showFullSize: self.renderer_showFullSize(),
                 extrusionWidth: self.renderer_extrusionWidthEnabled() ? self.renderer_extrusionWidth() : 1,
@@ -82,7 +90,7 @@ $(function() {
             var reader = {
                 sortLayers: self.reader_sortLayers(),
                 purgeEmptyLayers: self.reader_hideEmptyLayers(),
-                ignoreOutsideBed: true
+                ignoreOutsideBed: self.reader_ignoreOutsideBed(),
             };
             if (additionalReaderOptions) {
                 _.extend(reader, additionalReaderOptions);
@@ -94,20 +102,33 @@ $(function() {
             });
         };
 
+        self.rendererOptionUpdated = function() {
+            self.synchronizeOptions();
+            self._toLocalStorage();
+        };
+
+        self.readerOptionUpdated = function() {
+            self.synchronizeOptionsAndReload();
+            self._toLocalStorage();
+        };
+
         // subscribe to update Gcode view on updates...
-        self.renderer_centerModel.subscribe(self.synchronizeOptions);
-        self.renderer_centerViewport.subscribe(self.synchronizeOptions);
-        self.renderer_zoomOnModel.subscribe(self.synchronizeOptions);
-        self.renderer_showMoves.subscribe(self.synchronizeOptions);
-        self.renderer_showRetracts.subscribe(self.synchronizeOptions);
-        self.renderer_showBoundingBox.subscribe(self.synchronizeOptions);
-        self.renderer_showFullSize.subscribe(self.synchronizeOptions);
-        self.renderer_extrusionWidthEnabled.subscribe(self.synchronizeOptions);
-        self.renderer_extrusionWidth.subscribe(self.synchronizeOptions);
-        self.renderer_showNext.subscribe(self.synchronizeOptions);
-        self.renderer_showPrevious.subscribe(self.synchronizeOptions);
-        self.reader_sortLayers.subscribe(self.synchronizeOptions);
-        self.reader_hideEmptyLayers.subscribe(self.synchronizeOptions);
+        self.renderer_centerModel.subscribe(self.rendererOptionUpdated);
+        self.renderer_centerViewport.subscribe(self.rendererOptionUpdated);
+        self.renderer_zoomOnModel.subscribe(self.rendererOptionUpdated);
+        self.renderer_showMoves.subscribe(self.rendererOptionUpdated);
+        self.renderer_showRetracts.subscribe(self.rendererOptionUpdated);
+        self.renderer_showPrinthead.subscribe(self.rendererOptionUpdated);
+        self.renderer_showBoundingBox.subscribe(self.rendererOptionUpdated);
+        self.renderer_showFullSize.subscribe(self.rendererOptionUpdated);
+        self.renderer_extrusionWidthEnabled.subscribe(self.rendererOptionUpdated);
+        self.renderer_extrusionWidth.subscribe(self.rendererOptionUpdated);
+        self.renderer_showNext.subscribe(self.rendererOptionUpdated);
+        self.renderer_showPrevious.subscribe(self.rendererOptionUpdated);
+
+        self.reader_sortLayers.subscribe(self.readerOptionUpdated);
+        self.reader_hideEmptyLayers.subscribe(self.readerOptionUpdated);
+        self.reader_ignoreOutsideBed.subscribe(self.readerOptionUpdated);
 
         self._printerProfileUpdated = function() {
             if (!self.enabled) return;
@@ -122,7 +143,6 @@ $(function() {
                         toolOffsets: toolOffsets
                     }
                 });
-
             }
 
             var bedDimensions = self._retrieveBedDimensions(currentProfileData);
@@ -298,6 +318,7 @@ $(function() {
 
                     self.synchronizeOptions();
                     self.enabled = true;
+                    self._fromLocalStorage();
                 });
         };
 
@@ -306,6 +327,26 @@ $(function() {
             self.loadedFilepath = undefined;
             self.loadedFileDate = undefined;
             self.clear();
+        };
+
+        self.resetOptions = function() {
+            self.renderer_centerModel(false);
+            self.renderer_centerViewport(false);
+            self.renderer_zoomOnModel(false);
+            self.renderer_showMoves(true);
+            self.renderer_showRetracts(true);
+            self.renderer_showPrinthead(true);
+            self.renderer_showBoundingBox(false);
+            self.renderer_showFullSize(false);
+            self.renderer_extrusionWidthEnabled(false);
+            self.renderer_extrusionWidth(2);
+            self.renderer_showNext(false);
+            self.renderer_showPrevious(false);
+            self.renderer_syncProgress(true);
+
+            self.reader_sortLayers(true);
+            self.reader_hideEmptyLayers(true);
+            self.reader_ignoreOutsideBed(true);
         };
 
         self.clear = function() {
@@ -323,7 +364,7 @@ $(function() {
                 step: 1,
                 value: 0,
                 enabled: false,
-                formatter: function(value) { return "Layer #" + (value + 1); }
+                formatter: function(value) { return "Layer #" + (value + 1) + " (Z = " + GCODE.renderer.getZ(value) + ")"; }
             }).on("slide", self.changeLayer);
         };
 
@@ -535,7 +576,6 @@ $(function() {
 
                 self.ui_layerInfo(output.join("<br>"));
 
-                console.log("#### Layer number:", layer.number, ", max layer:", self.maxLayer);
                 if (self.layerCommandSlider != undefined) {
                     self.layerCommandSlider.slider("enable");
                     self.layerCommandSlider.slider("setMax", layer.commands - 1);
@@ -655,11 +695,62 @@ $(function() {
             var value = self.layerSlider.slider('getValue') - 1;
             self.shiftLayer(value);
         };
+
+        var optionsLocalStorageKey = "core.gcodeviewer.options";
+        self._toLocalStorage = function() {
+            if (!Modernizr.localstorage)
+                return;
+
+            var current = {};
+            current["centerViewport"] = self.renderer_centerViewport();
+            current["zoomOnModel"] = self.renderer_zoomOnModel();
+            current["showMoves"] = self.renderer_showMoves();
+            current["showRetracts"] = self.renderer_showRetracts();
+            current["showPrinthead"] = self.renderer_showPrinthead();
+            current["showPrevious"] = self.renderer_showPrevious();
+            current["showNext"] = self.renderer_showNext();
+            current["showFullsize"] = self.renderer_showFullSize();
+            current["showBoundingBox"] = self.renderer_showBoundingBox();
+            current["hideEmptyLayers"] = self.reader_hideEmptyLayers();
+            current["sortLayers"] = self.reader_sortLayers();
+
+            localStorage[optionsLocalStorageKey] = JSON.stringify(current);
+        };
+        self._fromLocalStorage = function() {
+            self.resetOptions();
+
+            if (!Modernizr.localstorage)
+                return;
+
+            var currentString = localStorage[optionsLocalStorageKey];
+            var current;
+            if (currentString === undefined) {
+                current = {};
+            } else {
+                try {
+                    current = JSON.parse(currentString);
+                } catch (ex) {
+                    current = {};
+                }
+            }
+
+            if (current["centerViewport"] !== undefined) self.renderer_centerViewport(current["centerViewport"]) ;
+            if (current["zoomOnModel"] !== undefined) self.renderer_zoomOnModel(current["zoomOnModel"]) ;
+            if (current["showMoves"] !== undefined) self.renderer_showMoves(current["showMoves"]) ;
+            if (current["showRetracts"] !== undefined) self.renderer_showRetracts(current["showRetracts"]) ;
+            if (current["showPrinthead"] !== undefined) self.renderer_showPrinthead(current["showPrinthead"]);
+            if (current["showPrevious"] !== undefined) self.renderer_showPrevious(current["showPrevious"]) ;
+            if (current["showNext"] !== undefined) self.renderer_showNext(current["showNext"]) ;
+            if (current["showFullsize"] !== undefined) self.renderer_showFullSize(current["showFullsize"]) ;
+            if (current["showBoundingBox"] !== undefined) self.renderer_showBoundingBox(current["showBoundingBox"]) ;
+            if (current["hideEmptyLayers"] !== undefined) self.reader_hideEmptyLayers(current["hideEmptyLayers"]) ;
+            if (current["sortLayers"] !== undefined) self.reader_sortLayers(current["sortLayers"]) ;
+        };
     }
 
-    OCTOPRINT_VIEWMODELS.push([
-        GcodeViewModel,
-        ["loginStateViewModel", "settingsViewModel"],
-        "#gcode"
-    ]);
+    OCTOPRINT_VIEWMODELS.push({
+        construct: GcodeViewModel,
+        dependencies: ["loginStateViewModel", "settingsViewModel"],
+        elements: ["#gcode"]
+    });
 });

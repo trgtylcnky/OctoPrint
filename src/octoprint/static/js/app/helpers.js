@@ -1,4 +1,4 @@
-function ItemListHelper(listType, supportedSorting, supportedFilters, defaultSorting, defaultFilters, exclusiveFilters, filesPerPage) {
+function ItemListHelper(listType, supportedSorting, supportedFilters, defaultSorting, defaultFilters, exclusiveFilters, defaultPageSize) {
     var self = this;
 
     self.listType = listType;
@@ -7,6 +7,7 @@ function ItemListHelper(listType, supportedSorting, supportedFilters, defaultSor
     self.defaultSorting = defaultSorting;
     self.defaultFilters = defaultFilters;
     self.exclusiveFilters = exclusiveFilters;
+    self.defaultPageSize = defaultPageSize;
 
     self.searchFunction = undefined;
 
@@ -14,11 +15,17 @@ function ItemListHelper(listType, supportedSorting, supportedFilters, defaultSor
     self.allSize = ko.observable(0);
 
     self.items = ko.observableArray([]);
-    self.pageSize = ko.observable(filesPerPage);
+    self.pageSize = ko.observable(self.defaultPageSize);
     self.currentPage = ko.observable(0);
     self.currentSorting = ko.observable(self.defaultSorting);
     self.currentFilters = ko.observableArray(self.defaultFilters);
     self.selectedItem = ko.observable(undefined);
+
+    self.storageIds = {
+        "currentSorting": self.listType + "." + "currentSorting",
+        "currentFilters": self.listType + "." + "currentFilters",
+        "pageSize": self.listType + "." + "pageSize",
+    };
 
     //~~ item handling
 
@@ -27,6 +34,7 @@ function ItemListHelper(listType, supportedSorting, supportedFilters, defaultSor
     };
 
     self.updateItems = function(items) {
+        if (items === undefined) items = [];
         self.allItems = items;
         self.allSize(items.length);
         self._updateItems();
@@ -55,17 +63,25 @@ function ItemListHelper(listType, supportedSorting, supportedFilters, defaultSor
     };
 
     self.removeItem = function(matcher) {
-        var item = self.getItem(matcher, true);
-        if (item === undefined) {
-            return;
-        }
-
-        var index = self.allItems.indexOf(item);
+        var index = self.getIndex(matcher, true);
         if (index > -1) {
             self.allItems.splice(index, 1);
             self._updateItems();
         }
     };
+
+    self.updateItem = function(matcher, item) {
+        var index = self.allItems.findIndex(matcher);
+        if (index > -1) {
+            self.allItems[index] = item;
+            self._updateItems();
+        }
+    };
+
+    self.addItem = function(item) {
+        self.allItems.push(item);
+        self._updateItems();
+    }
 
     //~~ pagination
 
@@ -146,20 +162,29 @@ function ItemListHelper(listType, supportedSorting, supportedFilters, defaultSor
         }
     };
 
-    self.getItem = function(matcher, all) {
+    self.getIndex = function(matcher, all) {
         var itemList;
         if (all !== undefined && all === true) {
             itemList = self.allItems;
         } else {
             itemList = self.items();
         }
+
         for (var i = 0; i < itemList.length; i++) {
             if (matcher(itemList[i])) {
-                return itemList[i];
+                return i;
             }
         }
+        return -1;
+    }
 
-        return undefined;
+    self.getItem = function(matcher, all) {
+        var index = self.getIndex(matcher, all);
+        if (all !== undefined && all === true) {
+            return index > -1 ? self.allItems[index] : undefined;
+        } else {
+            return index > -1 ? self.items()[index] : undefined;
+        }
     };
 
     self.resetPage = function() {
@@ -281,16 +306,16 @@ function ItemListHelper(listType, supportedSorting, supportedFilters, defaultSor
         if ( self._initializeLocalStorage() ) {
             var currentSorting = self.currentSorting();
             if (currentSorting !== undefined)
-                localStorage[self.listType + "." + "currentSorting"] = currentSorting;
+                localStorage[self.storageIds.currentSorting] = currentSorting;
             else
-                localStorage[self.listType + "." + "currentSorting"] = undefined;
+                localStorage[self.storageIds.currentSorting] = undefined;
         }
     };
 
     self._loadCurrentSortingFromLocalStorage = function() {
         if ( self._initializeLocalStorage() ) {
-            if (_.contains(_.keys(supportedSorting), localStorage[self.listType + "." + "currentSorting"]))
-                self.currentSorting(localStorage[self.listType + "." + "currentSorting"]);
+            if (_.contains(_.keys(supportedSorting), localStorage[self.storageIds.currentSorting]))
+                self.currentSorting(localStorage[self.storageIds.currentSorting]);
             else
                 self.currentSorting(defaultSorting);
         }
@@ -299,31 +324,47 @@ function ItemListHelper(listType, supportedSorting, supportedFilters, defaultSor
     self._saveCurrentFiltersToLocalStorage = function() {
         if ( self._initializeLocalStorage() ) {
             var filters = _.intersection(_.keys(self.supportedFilters), self.currentFilters());
-            localStorage[self.listType + "." + "currentFilters"] = JSON.stringify(filters);
+            localStorage[self.storageIds.currentFilters] = JSON.stringify(filters);
         }
     };
 
     self._loadCurrentFiltersFromLocalStorage = function() {
         if ( self._initializeLocalStorage() ) {
-            self.currentFilters(_.intersection(_.keys(self.supportedFilters), JSON.parse(localStorage[self.listType + "." + "currentFilters"])));
+            self.currentFilters(_.intersection(_.keys(self.supportedFilters), JSON.parse(localStorage[self.storageIds.currentFilters])));
         }
     };
+
+    self._savePageSizeToLocalStorage = function(pageSize) {
+        if (self._initializeLocalStorage()) {
+            localStorage[self.storageIds.pageSize] = pageSize;
+        }
+    }
+
+    self.pageSize.subscribe(self._savePageSizeToLocalStorage);
+
+    self._loadPageSizeFromLocalStorage = function() {
+        if (self._initializeLocalStorage) {
+            self.pageSize(parseInt(localStorage[self.storageIds.pageSize]));
+        }
+    }
 
     self._initializeLocalStorage = function() {
         if (!Modernizr.localstorage)
             return false;
 
-        if (localStorage[self.listType + "." + "currentSorting"] !== undefined && localStorage[self.listType + "." + "currentFilters"] !== undefined && JSON.parse(localStorage[self.listType + "." + "currentFilters"]) instanceof Array)
+        if (localStorage[self.storageIds.currentSorting] !== undefined && localStorage[self.storageIds.currentFilters] !== undefined && JSON.parse(localStorage[self.storageIds.currentFilters]) instanceof Array && localStorage[self.storageIds.pageSize] !== undefined)
             return true;
 
-        localStorage[self.listType + "." + "currentSorting"] = self.defaultSorting;
-        localStorage[self.listType + "." + "currentFilters"] = JSON.stringify(self.defaultFilters);
+        localStorage[self.storageIds.currentSorting] = self.defaultSorting;
+        localStorage[self.storageIds.currentFilters] = JSON.stringify(self.defaultFilters);
+        localStorage[self.storageIds.pageSize] = self.defaultPageSize;
 
         return true;
     };
 
     self._loadCurrentFiltersFromLocalStorage();
     self._loadCurrentSortingFromLocalStorage();
+    self._loadPageSizeFromLocalStorage();
 }
 
 function formatSize(bytes) {
@@ -416,7 +457,7 @@ function formatFuzzyPrintTime(totalSeconds) {
     var seconds = d.seconds();
     var minutes = d.minutes();
     var hours = d.hours();
-    var days = d.asDays();
+    var days = d.days();
 
     var replacements = {
         days: days,
@@ -432,11 +473,16 @@ function formatFuzzyPrintTime(totalSeconds) {
         // days
         if (hours >= 16) {
             replacements.days += 1;
-            text = gettext("%(days)d days");
+
+            if (replacements.days === 1) {
+                text = gettext("%(days)d day");
+            } else {
+                text = gettext("%(days)d days");
+            }
         } else if (hours >= 8 && hours < 16) {
             text = gettext("%(days)d.5 days");
         } else {
-            if (days == 1) {
+            if (days === 1) {
                 text = gettext("%(days)d day");
             } else {
                 text = gettext("%(days)d days");
@@ -447,7 +493,7 @@ function formatFuzzyPrintTime(totalSeconds) {
         if (hours < 12) {
             if (minutes < 15) {
                 // less than .15 => .0
-                if (hours == 1) {
+                if (hours === 1) {
                     text = gettext("%(hours)d hour");
                 } else {
                     text = gettext("%(hours)d hours");
@@ -458,10 +504,15 @@ function formatFuzzyPrintTime(totalSeconds) {
             } else {
                 // over .75 => hours + 1
                 replacements.hours += 1;
-                text = gettext("%(hours)d hours");
+
+                if (replacements.hours === 1) {
+                    text = gettext("%(hours)d hour");
+                } else {
+                    text = gettext("%(hours)d hours");
+                }
             }
         } else {
-            if (hours == 23 && minutes > 30) {
+            if (hours === 23 && minutes > 30) {
                 // over 23.5 hours => 1 day
                 text = gettext("1 day");
             } else {
@@ -601,6 +652,7 @@ function showMessageDialog(msg, options) {
     var onclose = options.onclose || undefined;
     var onshow = options.onshow || undefined;
     var onshown = options.onshown || undefined;
+    var nofade = options.nofade || false;
 
     if (_.isString(message)) {
         message = $("<p>" + message + "</p>");
@@ -611,7 +663,11 @@ function showMessageDialog(msg, options) {
     var modalFooter = $('<a href="javascript:void(0)" class="btn" data-dismiss="modal" aria-hidden="true">' + close + '</a>');
 
     var modal = $('<div></div>')
-        .addClass('modal hide fade')
+        .addClass("modal hide");
+    if (!nofade) {
+        modal.addClass("fade");
+    }
+    modal
         .append($('<div></div>').addClass('modal-header').append(modalHeader))
         .append($('<div></div>').addClass('modal-body').append(modalBody))
         .append($('<div></div>').addClass('modal-footer').append(modalFooter));
@@ -644,17 +700,27 @@ function showConfirmationDialog(msg, onacknowledge, options) {
     }
 
     var title = options.title || gettext("Are you sure?");
+
     var message = options.message || "";
     var question = options.question || gettext("Are you sure you want to proceed?");
+
+    var html = options.html;
+
     var cancel = options.cancel || gettext("Cancel");
     var proceed = options.proceed || gettext("Proceed");
     var proceedClass = options.proceedClass || "danger";
     var onproceed = options.onproceed || undefined;
     var onclose = options.onclose || undefined;
     var dialogClass = options.dialogClass || "";
+    var nofade = options.nofade || false;
 
     var modalHeader = $('<a href="javascript:void(0)" class="close" data-dismiss="modal" aria-hidden="true">&times;</a><h3>' + title + '</h3>');
-    var modalBody = $('<p>' + message + '</p><p>' + question + '</p>');
+    var modalBody;
+    if (html) {
+        modalBody = $(html);
+    } else {
+        modalBody = $('<p>' + message + '</p><p>' + question + '</p>');
+    }
 
     var cancelButton = $('<a href="javascript:void(0)" class="btn">' + cancel + '</a>')
         .attr("data-dismiss", "modal")
@@ -663,8 +729,11 @@ function showConfirmationDialog(msg, onacknowledge, options) {
         .addClass("btn-" + proceedClass);
 
     var modal = $('<div></div>')
-        .addClass('modal hide fade')
-        .addClass(dialogClass)
+        .addClass('modal hide');
+    if (!nofade) {
+        modal.addClass('fade');
+    }
+    modal.addClass(dialogClass)
         .append($('<div></div>').addClass('modal-header').append(modalHeader))
         .append($('<div></div>').addClass('modal-body').append(modalBody))
         .append($('<div></div>').addClass('modal-footer').append(cancelButton).append(proceedButton));
@@ -681,6 +750,106 @@ function showConfirmationDialog(msg, onacknowledge, options) {
             onproceed(e);
         }
         modal.modal("hide");
+    });
+
+    return modal;
+}
+
+function showSelectionDialog(options) {
+    var title = options.title;
+    var message = options.message || undefined;
+    var selections = options.selections || [];
+
+    var maycancel = options.maycancel || false;
+    var cancel = options.cancel || undefined;
+    var onselect = options.onselect || undefined;
+    var onclose = options.onclose || undefined;
+    var dialogClass = options.dialogClass || "";
+    var nofade = options.nofade || false;
+
+    // header
+    var modalHeader;
+    if (maycancel) {
+        modalHeader = $('<a href="javascript:void(0)" class="close" data-dismiss="modal" aria-hidden="true">&times;</a><h3>' + title + '</h3>');
+    } else {
+        modalHeader = $('<h3>' + title + '</h3>');
+    }
+
+    // body
+    var buttons = [];
+    var selectionBody = $("<div></div>");
+    var container;
+    var additionalClass;
+
+    if (selections.length === 1) {
+        container = selectionBody;
+        additionalClass = "btn-block";
+    } else if (selections.length === 2) {
+        container = $("<div class='row-fluid'></div>");
+        selectionBody.append(container);
+        additionalClass = "span6"
+    } else {
+        container = $("<div class='row-fluid'></div>");
+        selectionBody.append(container);
+        additionalClass = "span6 offset3";
+    }
+
+    _.each(selections, function(s, i) {
+        var button = $('<button class="btn" data-index="' + i + '">' + selections[i] + '</button>');
+        if (additionalClass) {
+            button.addClass(additionalClass);
+        }
+        container.append(button);
+        buttons.push(button);
+
+        if (selections.length > 2 && i < selections.length - 1) {
+            container = $("<div class='row-fluid'></div>");
+            selectionBody.append(container);
+        }
+    });
+
+    // divs
+    var headerDiv = $('<div></div>').addClass('modal-header').append(modalHeader);
+
+    var bodyDiv = $('<div></div>').addClass('modal-body');
+    if (message) {
+        bodyDiv.append($('<p>' + message + '</p>'));
+    }
+    bodyDiv.append(selectionBody);
+
+    // create modal and do final wiring up
+    var modal = $('<div></div>')
+        .addClass('modal hide');
+    if (!nofade) {
+        modal.addClass('fade');
+    }
+    if (!cancel) {
+        modal.data("backdrop", "static").data("keyboard", "false");
+    }
+
+    modal.addClass(dialogClass)
+        .append(headerDiv)
+        .append(bodyDiv);
+    modal.on('hidden', function(event) {
+        if (onclose && _.isFunction(onclose)) {
+            onclose(event);
+        }
+    });
+    modal.modal("show");
+
+    _.each(buttons, function(button) {
+        button.click(function(e) {
+            e.preventDefault();
+            var index = button.data("index");
+            if (index < 0) {
+                return;
+            }
+
+            if (onselect && _.isFunction(onselect)) {
+                onselect(index, e);
+            }
+            modal.modal("hide");
+        })
     });
 
     return modal;
@@ -903,15 +1072,12 @@ function splitTextToArray(text, sep, stripEmpty, filter) {
  * and is optimized to check for value changes, not key updates.
  */
 function hasDataChanged(data, oldData) {
-    if (data == undefined) {
+    // noinspection EqualityComparisonWithCoercionJS
+    if (data == oldData && data == undefined) {
         return false;
     }
 
-    if (oldData == undefined) {
-        return true;
-    }
-
-    if (_.isPlainObject(data)) {
+    if (_.isPlainObject(data) && _.isPlainObject(oldData)) {
         return _.any(_.keys(data), function(key) {return hasDataChanged(data[key], oldData[key]);});
     } else {
         return !_.isEqual(data, oldData);
@@ -948,10 +1114,12 @@ function hasDataChanged(data, oldData) {
  * and is optimized to check for value changes, not key updates.
  */
 function getOnlyChangedData(data, oldData) {
+    // noinspection EqualityComparisonWithCoercionJS
     if (data == undefined) {
         return {};
     }
 
+    // noinspection EqualityComparisonWithCoercionJS
     if (oldData == undefined) {
         return data;
     }
@@ -964,17 +1132,20 @@ function getOnlyChangedData(data, oldData) {
         var retval = {};
         _.forOwn(root, function(value, key) {
             var oldValue = undefined;
+            // noinspection EqualityComparisonWithCoercionJS
             if (oldRoot != undefined && oldRoot.hasOwnProperty(key)) {
                 oldValue = oldRoot[key];
             }
             if (_.isPlainObject(value)) {
+                // noinspection EqualityComparisonWithCoercionJS
                 if (oldValue == undefined) {
                     retval[key] = value;
                 } else if (hasDataChanged(value, oldValue)) {
                     retval[key] = f(value, oldValue);
                 }
             } else {
-                if (!_.isEqual(value, oldValue)) {
+                // noinspection EqualityComparisonWithCoercionJS
+                if (!(value == oldValue && value == undefined) && !_.isEqual(value, oldValue)) {
                     retval[key] = value;
                 }
             }
@@ -990,28 +1161,60 @@ function setOnViewModels(allViewModels, key, value) {
 }
 
 function setOnViewModelsIf(allViewModels, key, value, condition) {
+    if (!allViewModels) return;
+    _.each(allViewModels, function(viewModel) {
+        setOnViewModelIf(viewModel, key, value, condition);
+    })
+}
+
+function setOnViewModel(viewModel, key, value) {
+    setOnViewModelIf(viewModel, key, value, undefined);
+}
+
+function setOnViewModelIf(viewModel, key, value, condition) {
     if (condition === undefined || !_.isFunction(condition)) {
         condition = function() { return true; };
     }
 
-    _.each(allViewModels, function(viewModel) {
-        if (condition(viewModel)) {
-            viewModel[key] = value;
+    try {
+        if (!condition(viewModel)) {
+            return;
         }
-    })
+
+        viewModel[key] = value;
+    } catch (exc) {
+        log.error("Error while setting", key, "to", value, "on view model", viewModel.constructor.name, ":", (exc.stack || exc));
+    }
 }
 
 function callViewModels(allViewModels, method, callback) {
-    if (!allViewModels) return;
     callViewModelsIf(allViewModels, method, undefined, callback);
 }
 
 function callViewModelsIf(allViewModels, method, condition, callback) {
     if (!allViewModels) return;
 
-    if (condition == undefined || !_.isFunction(condition)) {
+    _.each(allViewModels, function(viewModel) {
+        try {
+            callViewModelIf(viewModel, method, condition, callback);
+        } catch (exc) {
+            log.error("Error calling", method, "on view model", viewModel.constructor.name, ":", (exc.stack || exc));
+        }
+    });
+}
+
+function callViewModel(viewModel, method, callback, raiseErrors) {
+    callViewModelIf(viewModel, method, undefined, callback, raiseErrors);
+}
+
+function callViewModelIf(viewModel, method, condition, callback, raiseErrors) {
+    raiseErrors = raiseErrors === true || false;
+
+    if (condition === undefined || !_.isFunction(condition)) {
         condition = function() { return true; };
     }
+
+    if (!_.isFunction(viewModel[method]) || !condition(viewModel, method)) return;
 
     var parameters = undefined;
     if (!_.isFunction(callback)) {
@@ -1019,14 +1222,14 @@ function callViewModelsIf(allViewModels, method, condition, callback) {
         // call the view model method instead of providing it to the callback
         // - let's figure out how
 
-        if (callback == undefined) {
+        if (callback === undefined) {
             // directly call view model method with no parameters
             parameters = undefined;
-            log.trace("Calling method", method, "on view models");
+            log.trace("Calling method", method, "on view model");
         } else if (_.isArray(callback)) {
             // directly call view model method with these parameters
             parameters = callback;
-            log.trace("Calling method", method, "on view models with specified parameters", parameters);
+            log.trace("Calling method", method, "on view model with specified parameters", parameters);
         } else {
             // ok, this doesn't make sense, callback is neither undefined nor
             // an array, we'll return without doing anything
@@ -1037,29 +1240,29 @@ function callViewModelsIf(allViewModels, method, condition, callback) {
         // the method directly
         callback = undefined;
     } else {
-        log.trace("Providing method", method, "on view models to specified callback", callback);
+        log.trace("Providing method", method, "on view model to specified callback", callback);
     }
 
-    _.each(allViewModels, function(viewModel) {
-        if (viewModel.hasOwnProperty(method) && condition(viewModel, method)) {
-            try {
-                if (callback == undefined) {
-                    if (parameters != undefined) {
-                        // call the method with the provided parameters
-                        viewModel[method].apply(viewModel, parameters);
-                    } else {
-                        // call the method without parameters
-                        viewModel[method]();
-                    }
-                } else {
-                    // provide the method to the callback
-                    callback(viewModel[method], viewModel);
-                }
-            } catch (exc) {
-                log.error("Error calling", method, "on view model", viewModel.constructor.name, ":", (exc.stack || exc));
+    try {
+        if (callback === undefined) {
+            if (parameters !== undefined) {
+                // call the method with the provided parameters
+                viewModel[method].apply(viewModel, parameters);
+            } else {
+                // call the method without parameters
+                viewModel[method]();
             }
+        } else {
+            // provide the method to the callback
+            callback(viewModel[method], viewModel);
         }
-    });
+    } catch (exc) {
+        if (raiseErrors) {
+            throw exc;
+        } else {
+            log.error("Error calling", method, "on view model", viewModel.constructor.name, ":", (exc.stack || exc));
+        }
+    }
 }
 
 var sizeObservable = function(observable) {
@@ -1121,4 +1324,12 @@ var escapeUnprintableCharacters = function(str) {
         index++;
     }
     return result;
+};
+
+var copyToClipboard = function(text) {
+    var temp = $("<textarea>");
+    $("body").append(temp);
+    temp.val(text).select();
+    document.execCommand("copy");
+    temp.remove();
 };

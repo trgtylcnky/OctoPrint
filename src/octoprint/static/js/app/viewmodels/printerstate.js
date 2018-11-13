@@ -9,6 +9,8 @@ $(function() {
         self.isErrorOrClosed = ko.observable(undefined);
         self.isOperational = ko.observable(undefined);
         self.isPrinting = ko.observable(undefined);
+        self.isCancelling = ko.observable(undefined);
+        self.isPausing = ko.observable(undefined);
         self.isPaused = ko.observable(undefined);
         self.isError = ko.observable(undefined);
         self.isReady = ko.observable(undefined);
@@ -16,17 +18,18 @@ $(function() {
         self.isSdReady = ko.observable(undefined);
 
         self.enablePrint = ko.pureComputed(function() {
-            return self.isOperational() && self.isReady() && !self.isPrinting() && self.loginState.isUser() && self.filename() != undefined;
+            return self.isOperational() && self.isReady() && !self.isPrinting() && !self.isCancelling() && !self.isPausing() && self.loginState.isUser() && self.filename();
         });
         self.enablePause = ko.pureComputed(function() {
-            return self.isOperational() && (self.isPrinting() || self.isPaused()) && self.loginState.isUser();
+            return self.isOperational() && (self.isPrinting() || self.isPaused()) && !self.isCancelling() && !self.isPausing() && self.loginState.isUser();
         });
         self.enableCancel = ko.pureComputed(function() {
-            return self.isOperational() && (self.isPrinting() || self.isPaused()) && self.loginState.isUser();
+            return self.isOperational() && (self.isPrinting() || self.isPaused()) && !self.isCancelling() && !self.isPausing() && self.loginState.isUser();
         });
 
         self.filename = ko.observable(undefined);
         self.filepath = ko.observable(undefined);
+        self.filedisplay = ko.observable(undefined);
         self.progress = ko.observable(undefined);
         self.filesize = ko.observable(undefined);
         self.filepos = ko.observable(undefined);
@@ -35,6 +38,7 @@ $(function() {
         self.printTimeLeftOrigin = ko.observable(undefined);
         self.sd = ko.observable(undefined);
         self.timelapse = ko.observable(undefined);
+        self.user = ko.observable(undefined);
 
         self.busyFiles = ko.observableArray([]);
 
@@ -164,6 +168,20 @@ $(function() {
             }
         });
 
+        self.userString = ko.pureComputed(function() {
+            var user = self.user();
+            if (!CONFIG_ACCESS_CONTROL || user === "_dummy") {
+                return "";
+            }
+
+            if (user === "_api") {
+                user = "API client";
+            }
+
+            var file = self.filename();
+            return (user ? user : (file ? "-" : ""));
+        });
+
         self.fromCurrentData = function(data) {
             self._fromData(data);
         };
@@ -192,6 +210,8 @@ $(function() {
             self.isOperational(data.flags.operational);
             self.isPaused(data.flags.paused);
             self.isPrinting(data.flags.printing);
+            self.isCancelling(data.flags.cancelling);
+            self.isPausing(data.flags.pausing);
             self.isError(data.flags.error);
             self.isReady(data.flags.ready);
             self.isSdReady(data.flags.sdReady);
@@ -212,11 +232,13 @@ $(function() {
                 self.filename(data.file.name);
                 self.filepath(data.file.path);
                 self.filesize(data.file.size);
+                self.filedisplay(data.file.display);
                 self.sd(data.file.origin == "sdcard");
             } else {
                 self.filename(undefined);
                 self.filepath(undefined);
                 self.filesize(undefined);
+                self.filedisplay(undefined);
                 self.sd(undefined);
             }
 
@@ -236,7 +258,11 @@ $(function() {
                     });
                 });
             }
+
             self.filament(result.reverse());
+
+            self.user(data.user);
+
         };
 
         self._processProgressData = function(data) {
@@ -300,15 +326,16 @@ $(function() {
                     proceed: gettext("Yes"),
                     onproceed: function() {
                         OctoPrint.job.cancel();
-                    }
+                    },
+                    nofade: true
                 });
             }
         };
     }
 
-    OCTOPRINT_VIEWMODELS.push([
-        PrinterStateViewModel,
-        ["loginStateViewModel", "settingsViewModel"],
-        ["#state_wrapper", "#drop_overlay"]
-    ]);
+    OCTOPRINT_VIEWMODELS.push({
+        construct: PrinterStateViewModel,
+        dependencies: ["loginStateViewModel", "settingsViewModel"],
+        elements: ["#state_wrapper", "#drop_overlay"]
+    });
 });

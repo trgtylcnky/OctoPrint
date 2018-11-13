@@ -31,7 +31,13 @@ Internet!).
 .. hint::
 
    If you plan to have your OctoPrint instance accessible over the internet,
-   **always enable Access Control**.
+   **always enable Access Control** and ideally **don't make it accessible to
+   everyone over the internet but instead use a VPN** or at the very least
+   HTTP basic authentication on a layer above OctoPrint.
+
+   A physical device that includes heaters and stepper motors really should not be
+   publicly reachable by everyone with an internet connection, even with access
+   control enabled.
 
 .. _sec-features-access_control-rerunning_wizard:
 
@@ -39,7 +45,7 @@ Rerunning the wizard
 --------------------
 
 In case Access Control was disabled in the configuration wizard, it is
-possibly to re-run it by editing ``config.yaml`` [#f1]_ and setting ``firstRun``
+possible to re-run it by editing ``config.yaml`` [#f1]_ and setting ``firstRun``
 in the ``server`` section and ``enabled`` in the ``accessControl`` section to
 ``true``:
 

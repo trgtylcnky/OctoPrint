@@ -1,4 +1,4 @@
-<script lang="javascript">
+<script type="text/javascript">
     var BASEURL = "{{ url_for('index') }}";
     var API_BASEURL = BASEURL + "api/";
     var PLUGIN_BASEURL = BASEURL + "plugin/";
@@ -43,5 +43,13 @@
         var OCTOPRINT_INITIAL_TAB = "#{{ data._div }}";
     {% else %}
         var OCTOPRINT_INITIAL_TAB = undefined;
+    {% endif %}
+
+    {% if templates.wizard and templates.wizard.order %}
+        {% set first_tab = templates.wizard.order[0] %}
+        {% set entry, data = templates.wizard.entries[first_tab] %}
+        var OCTOPRINT_INITIAL_WIZARD = "#{{ data._div }}";
+    {% else %}
+        var OCTOPRINT_INITIAL_WIZARD = undefined;
     {% endif %}
 </script>

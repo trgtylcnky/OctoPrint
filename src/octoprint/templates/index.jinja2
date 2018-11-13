@@ -9,6 +9,7 @@
         <link rel="apple-touch-icon" sizes="144x144" href="{{ url_for('static', filename='img/apple-touch-icon-144x144.png') }}">
 
         <meta name="robots" content="noindex, nofollow, noimageindex">
+        <meta name="referrer" content="no-referrer">
 
         {% include 'stylesheets.jinja2' %}
         {% include 'initscript.jinja2' %}
@@ -116,13 +117,18 @@
                     {% endif %}
                 </div>
                 <div class="footer">
-                    <ul class="pull-left muted">
+
+
+                    <ul id="footer_version" class="pull-left muted">
+						<li><small>{{ _('Version') }} <span class="version">{{ display_version|e }}</span></small></li>
 
 <!--
                         <li><small>{{ _('OctoPrint') }} <span class="version">{{ display_version|e }}</span></small></li>
 -->
+
                     </ul>
-                    <ul class="pull-right">
+
+                    <ul id="footer_links" class="pull-right">
                         <li><a href="https://www.artiboyut.com/index.php/tr/" target="_blank" rel="noreferrer noopener"><i class="icon-home"></i> {{ _('Homepage') }}</a></li>
 
                         <li><a href="https://www.artiboyut.com/index.php/tr/bilgi-bankasi" target="_blank" rel="noreferrer noopener"><i class="icon-flag"></i> {{ _('Bilgi Bankası') }}</a></li>
@@ -132,13 +138,15 @@
                         <li><a href="https://www.artiboyut.com/index.php/tr/kurumsal/hakkimizda" target="_blank" rel="noreferrer noopener"><i class="icon-info-sign"></i> {{ _('Hakkımızda') }}</a></li>
 
                         <li><a href="https://www.artiboyut.com/index.php/tr/kurumsal/iletisim" target="_blank" rel="noreferrer noopener"><i class="icon-question-sign"></i> {{ _('FAQ') }}</a></li>
-                        <!--
-                        <li><a href="https://github.com/trgtylcnky/OctoPrint/" target="_blank" rel="noreferrer noopener"><i class="icon-github"></i> {{ _('Sourcecode') }}</a></li>
-                        <li><a href="http://docs.octoprint.org" target="_blank" rel="noreferrer noopener"><i class="icon-book"></i> {{ _('Documentation') }}</a></li>
-                        <li><a href="https://github.com/foosel/OctoPrint/issues" target="_blank" rel="noreferrer noopener"><i class="icon-flag"></i> {{ _('Bugs and Requests') }}</a></li>
-                        <li><a href="https://github.com/foosel/OctoPrint/wiki/FAQ" target="_blank" rel="noreferrer noopener"><i class="icon-question-sign"></i> {{ _('FAQ') }}</a></li>
-                        <li id="footer_about"><a href="javascript:void(0)" data-bind="click: show"><i class="icon-info-sign"></i> {{ _('About') }}</a></li>
-                        -->
+
+<!--
+                        <li><a href="https://octoprint.org" target="_blank" rel="noreferrer noopener"><i class="fa fa-home"></i> {{ _('Homepage') }}</a></li>
+                        <li><a href="https://discourse.octoprint.org" target="_blank" rel="noreferrer noopener"><i class="fa fa-users"></i> {{ _('Forum') }}</a></li>
+                        <li><a href="https://faq.octoprint.org" target="_blank" rel="noreferrer noopener"><i class="fa fa-question-circle"></i> {{ _('FAQ') }}</a></li>
+                        <li><a href="http://docs.octoprint.org" target="_blank" rel="noreferrer noopener"><i class="fa fa-book"></i> {{ _('Docs') }}</a></li>
+                        <li id="footer_about"><a href="javascript:void(0)" data-bind="click: show"><i class="fa fa-info-circle"></i> {{ _('About') }}</a></li>
+-->
+
                     </ul>
                 </div>
             </div>

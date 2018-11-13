@@ -54,11 +54,12 @@ $(function() {
         });
 
         self.editorPasswordMismatch = ko.pureComputed(function() {
-            return self.editorPassword() != self.editorRepeatedPassword();
+            return self.editorPassword() !== self.editorRepeatedPassword();
         });
 
         self.requestData = function() {
             if (!CONFIG_ACCESS_CONTROL) return;
+            if (!self.loginState.isAdmin()) return;
 
             OctoPrint.users.list()
                 .done(self.fromResponse);
@@ -97,8 +98,20 @@ $(function() {
         self.showEditUserDialog = function(user) {
             if (!CONFIG_ACCESS_CONTROL) return;
 
-            self.currentUser(user);
-            self.editUserDialog.modal("show");
+            var process = function(user) {
+                self.currentUser(user);
+                self.editUserDialog.modal("show");
+            };
+
+            // make sure we have the current user data, see #2534
+            OctoPrint.users.get(user.name)
+                .done(function(data) {
+                    process(data);
+                })
+                .fail(function() {
+                    log.warn("Could not fetch current user data, proceeding with client side data copy");
+                    process(user);
+                });
         };
 
         self.confirmEditUser = function() {
@@ -163,6 +176,10 @@ $(function() {
                 });
         };
 
+        self.copyApikey = function() {
+            copyToClipboard(self.editorApikey());
+        };
+
         self._updateApikey = function(apikey) {
             self.editorApikey(apikey);
             self.requestData();
@@ -182,6 +199,7 @@ $(function() {
             if (!user) {
                 throw OctoPrint.InvalidArgumentError("user must be set");
             }
+            if (!self.loginState.isAdmin()) return $.Deferred().reject("You are not authorized to perform this action").promise();
 
             return OctoPrint.users.add(user)
                 .done(self.fromResponse);
@@ -191,6 +209,7 @@ $(function() {
             if (!user) {
                 throw OctoPrint.InvalidArgumentError("user must be set");
             }
+            if (!self.loginState.isAdmin()) return $.Deferred().reject("You are not authorized to perform this action").promise();
 
             if (user.name == "admin") {
                 // we do not allow to delete admin account
@@ -202,7 +221,7 @@ $(function() {
                 return $.Deferred().reject("You may not delete admin account.").promise();
             }
 
-            if (user.name == self.loginState.username()) {
+            if (user.name === self.loginState.username()) {
                 // we do not allow to delete ourselves
                 new PNotify({
                     title: gettext("Not possible"),
@@ -230,7 +249,10 @@ $(function() {
         };
 
         self.generateApikey = function(username) {
-            return OctoPrint.users.generateApiKey(username);
+            return OctoPrint.users.generateApiKey(username)
+                .done(function() {
+                    self.requestData();
+                });
         };
 
         self.deleteApikey = function(username) {
@@ -238,15 +260,12 @@ $(function() {
         };
 
         self.onUserLoggedIn = function(user) {
-            if (user.admin) {
-                self.requestData();
-            }
+            self.requestData();
         }
     }
 
-    OCTOPRINT_VIEWMODELS.push([
-        UsersViewModel,
-        ["loginStateViewModel"],
-        []
-    ]);
+    OCTOPRINT_VIEWMODELS.push({
+        construct: UsersViewModel,
+        dependencies: ["loginStateViewModel"]
+    });
 });

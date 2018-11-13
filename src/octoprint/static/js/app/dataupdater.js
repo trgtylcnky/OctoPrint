@@ -218,6 +218,9 @@ function DataUpdater(allViewModels, connectCallback, disconnectCallback) {
         });
     };
 
+    self._printerErrorCancelNotification = undefined;
+    self._printerErrorDisconnectNotification = undefined;
+    self._printerResetNotification = undefined;
     self._onEvent = function(event) {
         self._ifInitialized(function() {
             var type = event.data["type"];
@@ -225,24 +228,85 @@ function DataUpdater(allViewModels, connectCallback, disconnectCallback) {
 
             log.debug("Got event " + type + " with payload: " + JSON.stringify(payload));
 
-            if (type == "PrintCancelled") {
-                if (payload.firmwareError) {
-                    new PNotify({
-                        title: gettext("Unhandled communication error"),
-                        text: _.sprintf(gettext("There was an unhandled error while talking to the printer. Due to that the ongoing print job was cancelled. Error: %(firmwareError)s"), payload),
-                        type: "error",
-                        hide: false
-                    });
+            if (type === "PrintCancelling" && payload.firmwareError) {
+                if (self._printerErrorCancelNotification !== undefined) {
+                    self._printerErrorCancelNotification.remove();
                 }
-            } else if (type == "Error") {
-                if (payload.error && payload.error.indexOf("autodetect") == -1) { // ignore "failed to autodetect"
-                    new PNotify({
-                            title: gettext("Unhandled communication error"),
-                            text: _.sprintf(gettext("The was an unhandled error while talking to the printer. Due to that OctoPrint disconnected. Error: %(error)s"), payload),
+                self._printerErrorCancelNotification = new PNotify({
+                    title: gettext("Error reported by printer"),
+                    text: _.sprintf(gettext("Your printer's firmware reported an error. Due to that the ongoing print job will be cancelled. Reported error: %(firmwareError)s"), payload),
+                    type: "error",
+                    hide: false
+                });
+            } else if (type === "Error" && payload.error) {
+                var title = undefined,
+                    text = undefined;
+
+                switch (payload.reason) {
+                    case "firmware": {
+                        title = gettext("Error reported by printer");
+                        text = _.sprintf(gettext("Your printer's firmware reported an error. Due to that OctoPrint will disconnect. Reported error: %(error)s"), payload);
+                        break;
+                    }
+                    case "resend":
+                    case "timeout": {
+                        title = gettext("Communication error");
+                        text = _.sprintf(gettext("There was a communication error while talking to your printer. Please consult the terminal output and octoprint.log for details. Error: %(error)s"), payload);
+                        break;
+                    }
+                    case "connection": {
+                        title = gettext("Error connecting to printer");
+                        text = _.sprintf(gettext("There was an error while trying to connect to your printer. Error: %(error)s"), payload);
+                        break;
+                    }
+                    case "start_print": {
+                        title = gettext("Error starting a print");
+                        text = _.sprintf(gettext("There was an error while trying to start a print job. Error: %(error)s"), payload);
+                        break;
+                    }
+                    case "autodetect_port":
+                    case "autodetect_baudrate": {
+                        // ignore
+                        break;
+                    }
+                    default: {
+                        title = gettext("Unknown error");
+                        text = _.sprintf(gettext("There was an unknown error while talking to your printer. Please consult the terminal output and octoprint.log for details. Error: %(error)s"), payload);
+                        break;
+                    }
+                }
+
+                if (title && text) {
+                    if (self._printerErrorDisconnectNotification !== undefined) {
+                        self._printerErrorDisconnectNotification.remove();
+                    }
+                    self._printerErrorDisconnectNotification = new PNotify({
+                            title: title,
+                            text: text,
                             type: "error",
                             hide: false
                     });
                 }
+            } else if (type === "PrinterReset") {
+                var severity = undefined,
+                    text = undefined;
+                if (payload.idle) {
+                    text = gettext("It looks like your printer reset while a connection was active. If this was intentional you may safely ignore this message. Otherwise you should investigate why your printer reset itself, since this will interrupt prints and also file transfers to your printer's SD.");
+                    severity = "alert";
+                } else {
+                    text = gettext("It looks like your printer reset while a connection was active. Due to this the ongoing job was aborted. If this was intentional you may safely ignore this message. Otherwise you should investigate why your printer reset itself, since this will interrupt prints and also file transfers to your printer's SD.");
+                    severity = "error";
+                }
+
+                if (self._printerResetNotification !== undefined) {
+                    self._printerResetNotification.remove();
+                }
+                self._printerResetNotification = new PNotify({
+                    title: gettext("Printer reset detected"),
+                    text: text,
+                    type: severity,
+                    hide: false
+                });
             }
 
             var legacyEventHandlers = {

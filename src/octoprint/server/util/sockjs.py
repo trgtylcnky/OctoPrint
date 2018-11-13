@@ -7,8 +7,10 @@ __copyright__ = "Copyright (C) 2014 The OctoPrint Project - Released under terms
 
 import logging
 import threading
-import sockjs.tornado
-import sockjs.tornado.session
+import octoprint.vendor.sockjs.tornado
+import octoprint.vendor.sockjs.tornado.session
+import octoprint.vendor.sockjs.tornado.proto
+import octoprint.vendor.sockjs.tornado.util
 import time
 
 import octoprint.timelapse
@@ -18,13 +20,17 @@ import octoprint.plugin
 
 from octoprint.events import Events
 from octoprint.settings import settings
+from octoprint.util.json import JsonEncoding
 
 import octoprint.printer
 
+import wrapt
+import json
 
-class ThreadSafeSession(sockjs.tornado.session.Session):
+
+class ThreadSafeSession(octoprint.vendor.sockjs.tornado.session.Session):
 	def __init__(self, conn, server, session_id, expiry=None):
-		sockjs.tornado.session.Session.__init__(self, conn, server, session_id, expiry=expiry)
+		octoprint.vendor.sockjs.tornado.session.Session.__init__(self, conn, server, session_id, expiry=expiry)
 
 	def set_handler(self, handler, start_heartbeat=True):
 		if getattr(handler, "__orig_send_pack", None) is None:
@@ -38,10 +44,10 @@ class ThreadSafeSession(sockjs.tornado.session.Session):
 			handler.send_pack = send_pack
 			setattr(handler, "__orig_send_pack", orig_send_pack)
 
-		return sockjs.tornado.session.Session.set_handler(self, handler, start_heartbeat=start_heartbeat)
+		return octoprint.vendor.sockjs.tornado.session.Session.set_handler(self, handler, start_heartbeat=start_heartbeat)
 
 	def remove_handler(self, handler):
-		result = sockjs.tornado.session.Session.remove_handler(self, handler)
+		result = octoprint.vendor.sockjs.tornado.session.Session.remove_handler(self, handler)
 
 		if getattr(handler, "__orig_send_pack", None) is not None:
 			handler.send_pack = getattr(handler, "__orig_send_pack")
@@ -50,9 +56,20 @@ class ThreadSafeSession(sockjs.tornado.session.Session):
 		return result
 
 
-class PrinterStateConnection(sockjs.tornado.SockJSConnection, octoprint.printer.PrinterCallback):
+class JsonEncodingSessionWrapper(wrapt.ObjectProxy):
+	def send_message(self, msg, stats=True, binary=False):
+		self.send_jsonified(json.dumps(octoprint.vendor.sockjs.tornado.util.bytes_to_str(msg),
+		                               separators=(',', ':'),
+		                               default=JsonEncoding.encode),
+		                    stats)
+
+
+class PrinterStateConnection(octoprint.vendor.sockjs.tornado.SockJSConnection, octoprint.printer.PrinterCallback):
 	def __init__(self, printer, fileManager, analysisQueue, userManager, eventManager, pluginManager, session):
-		sockjs.tornado.SockJSConnection.__init__(self, session)
+		if isinstance(session, octoprint.vendor.sockjs.tornado.session.Session):
+			session = JsonEncodingSessionWrapper(session)
+
+		octoprint.vendor.sockjs.tornado.SockJSConnection.__init__(self, session)
 
 		self._logger = logging.getLogger(__name__)
 
@@ -81,6 +98,12 @@ class PrinterStateConnection(sockjs.tornado.SockJSConnection, octoprint.printer.
 		if forwardedFor is not None:
 			return forwardedFor.split(",")[0]
 		return info.ip
+
+	def __str__(self):
+		if self._remoteAddress:
+			return "{!r} connected to {}".format(self, self._remoteAddress)
+		else:
+			return "Unconnected {!r}".format(self)
 
 	def on_open(self, info):
 		self._remoteAddress = self._getRemoteAddress(info)
@@ -132,7 +155,6 @@ class PrinterStateConnection(sockjs.tornado.SockJSConnection, octoprint.printer.
 			self._emit("event", {"type": Events.MOVIE_RENDERING, "payload": octoprint.timelapse.current_render_job})
 
 	def on_close(self):
-		self._logger.info("Client connection closed: %s" % self._remoteAddress)
 		self._printer.unregister_callback(self)
 		self._fileManager.unregister_slicingprogress_callback(self)
 		octoprint.timelapse.unregister_callback(self)
@@ -141,6 +163,9 @@ class PrinterStateConnection(sockjs.tornado.SockJSConnection, octoprint.printer.
 		self._eventManager.fire(Events.CLIENT_CLOSED, {"remoteAddress": self._remoteAddress})
 		for event in octoprint.events.all_events():
 			self._eventManager.unsubscribe(event, self._onEvent)
+
+		self._logger.info("Client connection closed: %s" % self._remoteAddress)
+		self._remoteAddress = None
 
 	def on_message(self, message):
 		try:

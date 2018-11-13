@@ -54,8 +54,22 @@ $(function() {
             return !data.forced;
         };
 
-        self.markRead = function(channel, until) {
+        self.cleanedLink = function(data) {
+            // Strips any query parameters from the link and returns it
+            var link = data.link;
+            if (!link) return link;
+
+            var queryPos = link.indexOf("?");
+            if (queryPos !== -1) {
+                link = link.substr(0, queryPos);
+            }
+            return link;
+        };
+
+        self.markRead = function(channel, until, reload) {
             if (!self.loginState.isAdmin()) return;
+
+            reload = !!reload;
 
             var url = PLUGIN_BASEURL + "announcements/channels/" + channel;
 
@@ -71,7 +85,9 @@ $(function() {
                 data: JSON.stringify(payload),
                 contentType: "application/json; charset=UTF-8",
                 success: function() {
-                    self.retrieveData()
+                    if (reload) {
+                        self.retrieveData()
+                    }
                 }
             })
         };
@@ -244,7 +260,7 @@ $(function() {
                 text += "</ul>";
 
                 if (rest) {
-                    text += gettext(_.sprintf("... and %(rest)d more.", {rest: rest}));
+                    text += "<p>"  + gettext(_.sprintf("... and %(rest)d more.", {rest: rest})) + "</p>";
                 }
 
                 text += "<small>" + gettext("You can edit your announcement subscriptions under Settings > Announcements.") + "</small>";
@@ -326,10 +342,9 @@ $(function() {
 
     }
 
-    // view model class, parameters for constructor, container to bind to
-    ADDITIONAL_VIEWMODELS.push([
-        AnnouncementsViewModel,
-        ["loginStateViewModel", "settingsViewModel"],
-        ["#plugin_announcements_dialog", "#settings_plugin_announcements", "#navbar_plugin_announcements"]
-    ]);
+    OCTOPRINT_VIEWMODELS.push({
+        construct: AnnouncementsViewModel,
+        dependencies: ["loginStateViewModel", "settingsViewModel"],
+        elements: ["#plugin_announcements_dialog", "#settings_plugin_announcements", "#navbar_plugin_announcements"]
+    });
 });
